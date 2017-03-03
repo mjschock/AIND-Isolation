@@ -7,6 +7,7 @@ You must test your agent's strength against a set of agents with known
 relative strength using tournament.py and include the results in your report.
 """
 import random
+import math
 
 
 class Timeout(Exception):
@@ -80,6 +81,12 @@ class CustomPlayer:
         self.time_left = None
         self.TIMER_THRESHOLD = timeout
 
+    def get_distance(self, distance_metric, p, q):
+        if distance_metric == 'euclidean':
+            return math.sqrt(math.pow((p[0] - q[0]), 2) + math.pow((p[1] - q[1]), 2))
+        else:
+            return 0
+
     def get_move(self, game, legal_moves, time_left):
         """Search for the best move from the available legal moves and return a
         result before the time limit expires.
@@ -123,20 +130,50 @@ class CustomPlayer:
         # Perform any required initializations, including selecting an initial
         # move from the game board (i.e., an opening book), or returning
         # immediately if there are no legal moves
+        # print('game: ', game.to_string())
+        # print('legal_moves: ', legal_moves)
+        if len(legal_moves) == 0:
+            return (-1, -1)
+
+        active_player = game.__active_player__
+        oponent_player = game.__inactive_player__
+        active_player_location = game.get_player_location(active_player)
+        oponent_player_location = game.get_player_location(oponent_player)
+
+        best_move = legal_moves[0] # if the middle is open, try that?
+
+        if active_player_location is None and oponent_player_location is None:
+            # TODO
+            pass
+        elif oponent_player_location is None:
+            # TODO
+            pass
+        else:
+            # TODO
+            max_dist = 0
+            for legal_move in legal_moves:
+                dist = self.get_distance('euclidean', oponent_player_location, legal_move)
+                if dist > max_dist:
+                    max_dist = dist
+                    best_move = legal_move
+
+        # print('best_move: ', best_move)
 
         try:
             # The search method call (alpha beta or minimax) should happen in
             # here in order to avoid timeout. The try/except block will
             # automatically catch the exception raised by the search method
             # when the timer gets close to expiring
-            pass
+            if self.method == 'minimax':
+                score, best_move = self.minimax(game, self.search_depth)
 
         except Timeout:
             # Handle any actions required at timeout, if necessary
             pass
 
         # Return the best move from the last completed search iteration
-        raise NotImplementedError
+        # raise NotImplementedError
+        return best_move
 
     def minimax(self, game, depth, maximizing_player=True):
         """Implement the minimax search algorithm as described in the lectures.
@@ -173,7 +210,36 @@ class CustomPlayer:
             raise Timeout()
 
         # TODO: finish this function!
-        raise NotImplementedError
+        def utility(state):
+            return state.utility(state, state.active_player)
+
+        def actions(state):
+            return state.get_legal_moves(state.active_player)
+
+        def terminal_test(state):
+            return depth == 0 or len(actions(state)) == 0
+
+        def result(state, action):
+            return state.forecast_move(action)
+
+        current_score = self.score(game, game.inactive_player)
+        best_move = (-1, -1)
+
+        if terminal_test(game):
+            return current_score, best_move
+
+        best_score = float("-inf") if maximizing_player else float("inf")
+        for action in actions(game):
+            next_game_state = result(game, action)
+            next_layer = False if maximizing_player else True
+            next_best_score, _ = self.minimax(next_game_state, depth - 1, next_layer)
+            new_maximizing_best_score = maximizing_player and next_best_score > best_score
+            new_minimizing_best_score = maximizing_player is False and next_best_score < best_score
+            if new_maximizing_best_score or new_minimizing_best_score:
+                best_score = current_score + next_best_score
+                best_move = action
+
+        return best_score, best_move
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf"), maximizing_player=True):
         """Implement minimax search with alpha-beta pruning as described in the
