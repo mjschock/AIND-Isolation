@@ -14,6 +14,11 @@ class Timeout(Exception):
     """Subclass base exception for code clarity."""
     pass
 
+def get_distance(distance_metric, p, q):
+    if distance_metric == 'euclidean':
+        return math.sqrt(math.pow((p[0] - q[0]), 2) + math.pow((p[1] - q[1]), 2))
+    else:
+        return 0
 
 def custom_score(game, player):
     """Calculate the heuristic value of a game state from the point of view
@@ -39,7 +44,9 @@ def custom_score(game, player):
     """
 
     # TODO: finish this function!
-    raise NotImplementedError
+    player_1_location = game.get_player_location(game.__player_1__)
+    player_2_location = game.get_player_location(game.__player_2__)
+    return get_distance('euclidean', player_1_location, player_2_location)
 
 
 class CustomPlayer:
@@ -80,12 +87,6 @@ class CustomPlayer:
         self.method = method
         self.time_left = None
         self.TIMER_THRESHOLD = timeout
-
-    def get_distance(self, distance_metric, p, q):
-        if distance_metric == 'euclidean':
-            return math.sqrt(math.pow((p[0] - q[0]), 2) + math.pow((p[1] - q[1]), 2))
-        else:
-            return 0
 
     def get_move(self, game, legal_moves, time_left):
         """Search for the best move from the available legal moves and return a
@@ -135,24 +136,22 @@ class CustomPlayer:
         if len(legal_moves) == 0:
             return (-1, -1)
 
-        active_player = game.__active_player__
-        oponent_player = game.__inactive_player__
-        active_player_location = game.get_player_location(active_player)
-        oponent_player_location = game.get_player_location(oponent_player)
+        active_player_location = game.get_player_location(game.active_player)
+        inactive_player_location = game.get_player_location(game.inactive_player)
 
         best_move = legal_moves[0] # if the middle is open, try that?
 
-        if active_player_location is None and oponent_player_location is None:
+        if active_player_location is None and inactive_player_location is None:
             # TODO
             pass
-        elif oponent_player_location is None:
+        elif inactive_player_location is None:
             # TODO
             pass
         else:
             # TODO
             max_dist = 0
             for legal_move in legal_moves:
-                dist = self.get_distance('euclidean', oponent_player_location, legal_move)
+                dist = get_distance('euclidean', inactive_player_location, legal_move)
                 if dist > max_dist:
                     max_dist = dist
                     best_move = legal_move
@@ -164,8 +163,19 @@ class CustomPlayer:
             # here in order to avoid timeout. The try/except block will
             # automatically catch the exception raised by the search method
             # when the timer gets close to expiring
-            if self.method == 'minimax':
-                score, best_move = self.minimax(game, self.search_depth)
+            def run_method(depth):
+                if self.method == 'minimax':
+                    _, best_move = self.minimax(game, depth)
+                elif self.method == 'alphabeta':
+                    _, best_move = self.alphabeta(game, depth)
+
+            if self.iterative:
+                depth = -1
+                while True:
+                    depth += 1
+                    run_method(depth)
+            else:
+                run_method(self.search_depth)
 
         except Timeout:
             # Handle any actions required at timeout, if necessary
@@ -222,7 +232,7 @@ class CustomPlayer:
         def result(state, action):
             return state.forecast_move(action)
 
-        current_score = self.score(game, game.inactive_player)
+        current_score = self.score(game, game.inactive_player) # TODO: why needed here and not below?
         best_move = (-1, -1)
 
         if terminal_test(game):
@@ -236,12 +246,13 @@ class CustomPlayer:
             new_maximizing_best_score = maximizing_player and next_best_score > best_score
             new_minimizing_best_score = maximizing_player is False and next_best_score < best_score
             if new_maximizing_best_score or new_minimizing_best_score:
-                best_score = current_score + next_best_score
+                best_score = self.score(game, game.inactive_player) + next_best_score
                 best_move = action
 
         return best_score, best_move
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf"), maximizing_player=True):
+        # print('game.root: ', game.root)
         """Implement minimax search with alpha-beta pruning as described in the
         lectures.
 
@@ -283,4 +294,40 @@ class CustomPlayer:
             raise Timeout()
 
         # TODO: finish this function!
-        raise NotImplementedError
+        def utility(state):
+            return state.utility(state, state.active_player)
+
+        def actions(state):
+            return state.get_legal_moves(state.active_player)
+
+        def terminal_test(state):
+            return depth == 0 or len(actions(state)) == 0
+
+        def result(state, action):
+            return state.forecast_move(action)
+
+        best_move = (-1, -1)
+
+        if terminal_test(game):
+            return self.score(game, game.active_player), best_move #TODO: inactive_player?
+
+        best_score = float("-inf") if maximizing_player else float("inf")
+        for action in actions(game):
+            next_game_state = result(game, action)
+            next_layer = False if maximizing_player else True
+            next_best_score, _ = self.alphabeta(next_game_state, depth - 1, alpha, beta, next_layer)
+            new_maximizing_best_score = maximizing_player and next_best_score > best_score
+            new_minimizing_best_score = maximizing_player is False and next_best_score < best_score
+            if new_maximizing_best_score or new_minimizing_best_score:
+                best_score = next_best_score
+                best_move = action
+            if maximizing_player:
+                if best_score >= beta:
+                    return best_score, best_move
+                alpha = max(alpha, best_score)
+            else:
+                if best_score <= alpha:
+                    return best_score, best_move
+                beta = min(beta, best_score)
+
+        return best_score, best_move
