@@ -7,7 +7,7 @@ You must test your agent's strength against a set of agents with known
 relative strength using tournament.py and include the results in your report.
 """
 import math
-
+import random
 
 class Timeout(Exception):
     """Subclass base exception for code clarity."""
@@ -71,58 +71,71 @@ def custom_score(game, player):
     """
 
     # TODO: finish this function!
+    opponent = game.get_opponent(player)
+    player_location = game.get_player_location(player)
+    opponent_location = game.get_player_location(opponent)
+    num_player_legal_moves = len(game.get_legal_moves(player))
+    num_opponent_legal_moves = len(game.get_legal_moves(opponent))
+    num_blank_spaces = len(game.get_blank_spaces())
+    distance_between_players = get_distance('manhattan', player_location, opponent_location)
+    middle_position = (round(game.width / 2), round(game.height / 2))
+    player_distance_to_middle = get_distance('manhattan', player_location, middle_position)
+    opponent_distance_to_middle = get_distance('manhattan', opponent_location, middle_position)
 
-    def get_score(game, player, dig = False):
-        opponent = game.get_opponent(player)
-        player_location = game.get_player_location(player)
-        opponent_location = game.get_player_location(opponent)
-        distance_between_players = get_distance('manhattan', player_location, opponent_location)
-        num_blank_spaces = len(game.get_blank_spaces())
-        num_player_legal_moves = len(game.get_legal_moves(player))
-        num_opponent_legal_moves = len(game.get_legal_moves(opponent))
-        middle_position = (round(game.width / 2), round(game.height / 2))
-        player_distance_to_middle = get_distance('manhattan', player_location, middle_position)
-        opponent_distance_to_middle = get_distance('manhattan', opponent_location, middle_position)
-        diff_legal_moves = num_player_legal_moves - num_opponent_legal_moves
-        diff_distances_to_middle = player_distance_to_middle - opponent_distance_to_middle
+    if game.is_loser(player):
+        return float("-inf")
+    if game.is_winner(player):
+        return float("inf")
 
-        if game.is_loser(player):
-            return float("-inf")
-        if game.is_winner(player):
-            return float("inf")
 
-        # score = float(distance_between_players) # 5%
-        # score = float(-distance_between_players) # 37.50% manhattan
-        # score = float(-distance_between_players) # 32.50% euclidean
-        # score = float(-distance_between_players) # 32.50% akritean
-        # score = float(diff_legal_moves - distance_between_players) # 10% manhattan
-        # score = float(diff_legal_moves) # 5%
-        # score = float(num_player_legal_moves - 2*num_opponent_legal_moves) # 17.50%
-        # score = float(num_player_legal_moves - 3*num_opponent_legal_moves) # 37.50%
-        # score = float(num_player_legal_moves - 4*num_opponent_legal_moves) # 25.00%
-        # score = float(num_player_legal_moves - math.pi * num_opponent_legal_moves) # 45.00%
-        # score = float(num_player_legal_moves - math.pi * num_opponent_legal_moves - distance_between_players) # 20.00%
-        # score = float(num_player_legal_moves - math.pi * num_opponent_legal_moves - 2 * distance_between_players) # 10.00%
-        # score = float(num_player_legal_moves - math.pi * num_opponent_legal_moves - 0.0001 * distance_between_players) # 22.50%
-        # score = float(num_player_legal_moves - math.pi * num_opponent_legal_moves + distance_between_players) # 20%
-        # score = float(num_player_legal_moves - math.pi * (num_opponent_legal_moves + distance_between_players)) # 35.00%
-        # score = float(num_player_legal_moves - math.pi * (num_opponent_legal_moves + 0.5 * distance_between_players)) # 25.00%
-        # score = float(num_player_legal_moves - (math.pi * num_opponent_legal_moves) - (math.e * distance_between_players)) # 17.50%
-        # score = float(num_player_legal_moves - (math.pi * num_opponent_legal_moves) - (math.tau * distance_between_players)) # 15.00%
-        # score = float(num_player_legal_moves - math.tau * num_opponent_legal_moves) # 30.00%
-        # score = float(num_player_legal_moves - math.pi * num_opponent_legal_moves - num_blank_spaces) #60%
-        # score = float(num_player_legal_moves - math.pi * num_opponent_legal_moves - 2 * num_blank_spaces) #75%
-        # score = float(num_player_legal_moves - math.pi * (num_opponent_legal_moves - num_blank_spaces)) #0%
-        # score = float(num_player_legal_moves - math.pi * num_opponent_legal_moves - 3 * num_blank_spaces) #80.00%
-        # score = float(num_player_legal_moves - math.pi * num_opponent_legal_moves - 6 * num_blank_spaces) #67.50%
-        # score = float(num_player_legal_moves - math.pi * num_opponent_legal_moves - 4 * num_blank_spaces) #75.00%
-        # score = float(num_player_legal_moves - math.pi * (num_opponent_legal_moves + num_blank_spaces)) #77.50%
-        # score = float(num_player_legal_moves - 3 * (num_opponent_legal_moves + num_blank_spaces)) #67.50%
-        # score = float(num_player_legal_moves - math.pi * num_opponent_legal_moves - math.e * num_blank_spaces) #72.50%
-        score = float(num_player_legal_moves - math.pi * num_opponent_legal_moves - 3 * num_blank_spaces) #67.50%
-        return score
+    # score = float(num_player_legal_moves) # (68.57%; 66.43%)
+    # score = float(-num_player_legal_moves) # (67.86%; 61.43%)
+    # score = float(num_opponent_legal_moves) # (72.86%; 53.57%)
+    # score = float(-num_opponent_legal_moves) # (68.57%; 67.86%)
+    # score = float(num_blank_spaces) # (65.71%, 60.71%)
+    # score = float(-num_blank_spaces) # (69.29%; 53.57%)
+    # score = float(distance_between_players) # (68.57%; 60.00%)
+    # score = float(-distance_between_players) # (66.43%; 56.43%)
+    # score = float(player_distance_to_middle) # (66.43%; 62.86%)
+    # score = float(-player_distance_to_middle) # (70.00%; 62.86%)
+    # score = float(opponent_distance_to_middle) # (70.00%, 56.43%)
+    # score = float(-opponent_distance_to_middle) # (66.43%, 58.57%)
+    # score = float(0) # (68.57%; 55.71%) (76.43%; 58.57%)
+    # score = float(num_player_legal_moves - num_opponent_legal_moves) #(77.86%; 77.14%)
+    # score = float(num_player_legal_moves - 2 * num_opponent_legal_moves) #(70.71%; 80.71%, 66.43%; 67.86%)
+    # score = float(num_player_legal_moves - 3 * num_opponent_legal_moves) #(82.86%; 72.14%)
+    # score = float(num_player_legal_moves - 2 * num_opponent_legal_moves - num_blank_spaces) #(75.71%; 66.43%)
+    # score = float(num_player_legal_moves - 2 * num_opponent_legal_moves - distance_between_players) #(65.00%; 72.86%)
+    # score = float(num_player_legal_moves - 2 * num_opponent_legal_moves - 0.5 * distance_between_players) #(66.43%; 65.00%)
+    # score = float(num_player_legal_moves - 2 * num_opponent_legal_moves - 2 * distance_between_players) #(68.57%; 70.71%)
+    # score = float(num_player_legal_moves - 2 * num_opponent_legal_moves - 3 * distance_between_players) #(72.86%%; 64.29%)
+    # score = float(-2 * num_opponent_legal_moves) # ()
+    # score = float(num_player_legal_moves - num_opponent_legal_moves - num_blank_spaces - distance_between_players) #(66.43%; 67.86%)
+    # score = float(num_player_legal_moves * num_player_legal_moves) #(64.29%, 65.71%)
+    # score = float(num_opponent_legal_moves * num_opponent_legal_moves)
+    # score = float(num_player_legal_moves * num_player_legal_moves - num_opponent_legal_moves * num_opponent_legal_moves) #(68.57%; 72.14%)
+    # score = float(num_player_legal_moves - num_opponent_legal_moves * num_opponent_legal_moves - num_blank_spaces - distance_between_players) #(70.71%; 72.86%)
 
-    score = get_score(game, player, True)
+    # score = float(num_player_legal_moves - 2 * num_opponent_legal_moves) #(70.71%; 80.71%, 66.43%; 67.86%, 71.43%; 67.86%)
+    # score = float(num_player_legal_moves - 2 * num_opponent_legal_moves - 2 * num_blank_spaces) #(72.14%; 70.00%)
+    # score = float(num_player_legal_moves - 2 * num_opponent_legal_moves - 2 * distance_between_players) #(65.00%; 72.86%)
+    # score = float(num_player_legal_moves - 2 * num_opponent_legal_moves - 2 * num_blank_spaces - 2 * distance_between_players) #(65.00%, 67.86%)
+    # score = float(num_player_legal_moves - 2 * num_opponent_legal_moves - 2 * num_blank_spaces - 2 * distance_between_players) #(65.00%; 67.86%)
+    # score = float(num_player_legal_moves - 2 * num_opponent_legal_moves - distance_between_players) #(62.14%, 69.29%)
+    # score = float(num_player_legal_moves - 3 * num_opponent_legal_moves - distance_between_players) #(62.14%; 69.29%, 66.43%; 65.00%)
+    # score = float(num_player_legal_moves - 3 * num_opponent_legal_moves - 100 * distance_between_players) #(71.43%; 67.86%)
+    # score = float(num_player_legal_moves - 2 * num_opponent_legal_moves - distance_between_players) #(71.43%; 67.86%)
+
+    # score = random.random() # (67.86%; 75.71%)
+    # score = float(num_player_legal_moves - random.random() * (num_opponent_legal_moves + distance_between_players)) # (64.29%; 75.00%)
+
+    score = float(num_player_legal_moves - random.random() * (num_opponent_legal_moves + num_blank_spaces + distance_between_players)) # (64.29%; 72.86%, 67.14%; 75.71%, 71.43%; 68.57%) manhattan
+    # score = float(num_player_legal_moves - random.random() * (num_opponent_legal_moves + num_blank_spaces + distance_between_players)) # (62.86%; 67.14%, 67.86%; 72.86%, 70.00%; 69.29%) euclidean
+    # score = float(num_player_legal_moves - random.random() * (num_opponent_legal_moves + num_blank_spaces + distance_between_players)) # (66.43%; 72.86%, 70.71%; 73.57%, 71.43%; 62.86%) akritean
+
+    # score = float(num_player_legal_moves - random.random() * (num_opponent_legal_moves + distance_between_players)) # (64.29%; 75.00%, 67.86%; 72.86%, 68.57%; 69.29%) manhattan
+    # score = float(num_player_legal_moves - random.random() * (num_opponent_legal_moves + distance_between_players)) # (69.29%; 68.57%, 68.57%; 75.71%, 68.57%; 65.71%) euclidean
+    # score = float(num_player_legal_moves - random.random() * (num_opponent_legal_moves + distance_between_players)) # (65.71%; 73.57%, 70.71%; 70.71%, 62.14%; 72.14%) akritean
 
     return score
 
@@ -213,20 +226,20 @@ class CustomPlayer:
         if len(legal_moves) == 0:
             return best_move
 
-        # active_player_location = game.get_player_location(game.active_player)
-        # inactive_player_location = game.get_player_location(game.inactive_player)
+        active_player_location = game.get_player_location(game.active_player)
+        inactive_player_location = game.get_player_location(game.inactive_player)
 
-        # if active_player_location is None and inactive_player_location is None:
-        #     return (round(game.width / 2), round(game.height / 2))
-        # elif active_player_location is None:
-        #     max_dist = 0
-        #     best_move = None
-        #     for legal_move in legal_moves:
-        #         dist = get_distance('manhattan', legal_move, inactive_player_location)
-        #         if dist > max_dist:
-        #             max_dist = dist
-        #             best_move = legal_move
-        #     return best_move
+        if active_player_location is None and inactive_player_location is None:
+            return (round(game.width / 2), round(game.height / 2))
+        elif active_player_location is None:
+            max_dist = 0
+            best_move = None
+            for legal_move in legal_moves:
+                dist = get_distance('manhattan', legal_move, inactive_player_location)
+                if dist > max_dist:
+                    max_dist = dist
+                    best_move = legal_move
+            return best_move
 
         def run_method(best_score, best_move, depth):
             if self.method == 'minimax':
@@ -234,11 +247,7 @@ class CustomPlayer:
             elif self.method == 'alphabeta':
                 next_best_score, next_best_move = self.alphabeta(game, depth)
 
-            if next_best_score >= best_score:
-                best_score = next_best_score
-                best_move = next_best_move
-
-            return best_score, best_move
+            return next_best_score, next_best_move
 
         try:
             # The search method call (alpha beta or minimax) should happen in
@@ -246,8 +255,7 @@ class CustomPlayer:
             # automatically catch the exception raised by the search method
             # when the timer gets close to expiring
             if self.iterative:
-                # depth = 0
-                depth = -1
+                depth = 0
                 while True:
                     depth += 1
                     best_score, best_move = run_method(best_score, best_move, depth)
@@ -302,34 +310,15 @@ class CustomPlayer:
         if terminal_test(game, depth):
             return heuristic_value(game, depth, maximizing_player, self.score)
 
-        if maximizing_player:
-            best_score = float("-inf")
-            for action in actions(game):
-                next_game_state = result(game, action)
-                next_best_score, _ = self.minimax(next_game_state, depth - 1, False)
-                if next_best_score > best_score:
-                    best_score = next_best_score
-                    best_move = action
-            return best_score, best_move
-        else:
-            best_score = float("inf")
-            for action in actions(game):
-                next_game_state = result(game, action)
-                next_best_score, _ = self.minimax(next_game_state, depth - 1, True)
-                if next_best_score < best_score:
-                    best_score = next_best_score
-                    best_move = action
-            return best_score, best_move
-
-        # for action in actions(game):
-        #     next_game_state = result(game, action)
-        #     next_layer = False if maximizing_player else True
-        #     next_best_score, _ = self.minimax(next_game_state, depth - 1, next_layer)
-        #     new_maximizing_best_score = maximizing_player and next_best_score > best_score
-        #     new_minimizing_best_score = maximizing_player is False and next_best_score < best_score
-        #     if new_maximizing_best_score or new_minimizing_best_score:
-        #         best_score = next_best_score
-        #         best_move = action
+        for action in actions(game):
+            next_game_state = result(game, action)
+            next_layer = False if maximizing_player else True
+            next_best_score, _ = self.minimax(next_game_state, depth - 1, next_layer)
+            new_maximizing_best_score = maximizing_player and next_best_score > best_score
+            new_minimizing_best_score = maximizing_player is False and next_best_score < best_score
+            if new_maximizing_best_score or new_minimizing_best_score:
+                best_score = next_best_score
+                best_move = action
 
         return best_score, best_move
 
